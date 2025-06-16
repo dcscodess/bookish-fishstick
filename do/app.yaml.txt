@@ -1,0 +1,10 @@
+name: bookish-fishstick
+services:
+  - name: streamlit-app
+    github:
+      repo: dcscodess/bookish-fishstick
+      branch: main
+    run_command: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+    http_port: 8501
+    instance_count: 1
+    instance_size_slug: basic-xxs
