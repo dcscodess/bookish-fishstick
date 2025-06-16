@@ -3,4 +3,4 @@ sqlalchemy
 fpdf
 pillow
 pandas
-pymysq
+pymysql
