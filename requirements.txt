@@ -4,3 +4,4 @@ fpdf
 pillow
 pandas
 pymysql
+mysqlclient
