@@ -66,12 +66,14 @@ DOMAIN_SHORTFORMS = {
     "Web Development": "WD",
     "Cybersecurity": "CS",
     "Java Full Stack": "JFSD",
-    "AIML": "AIML"
+    "Artificial Intelligence": "AIML",
+    "Internet of Things":"IOT"
 }
 
 # ---------- FLEXIBLE COLUMN MAPPING AND DATE FIX ----------
 
 EXPECTED_COLUMNS = {
+    "Prefix":["Prefix","prefix"],
     "Name": ["Name", "Full Name", "Student Name"],
     "USN": ["USN", "University Serial Number", "ID"],
     "College": ["College", "Institution", "University"],
@@ -121,10 +123,13 @@ def map_and_clean_columns(df):
             mapped_df[date_col] = mapped_df[date_col].apply(parse_date_safe)
     return mapped_df
 
-def generate_certificate_id(domain_short, usn, date_obj):
-    month_short = date_obj.strftime("%b").upper()
-    year_short = date_obj.strftime("%y")
-    return f"DL{domain_short}{usn}{month_short}{year_short}"
+def generate_certificate_id(domain_short, usn, date_obj, org):
+    month_short = date_obj.strftime("%b").upper()  # e.g., 'Jun' → 'JUN'
+    year_short = date_obj.strftime("%y")           # e.g., 2025 → '25'
+    if str(org).lower() == "nxtalign":
+        return f"NXT{domain_short}{usn}{month_short}{year_short}"
+    else:
+        return f"DL{domain_short}{usn}{month_short}{year_short}"
 
 def clean_text(text):
     if not isinstance(text, str):
@@ -152,8 +157,9 @@ def format_date(dt):
     return f"{day}{suffix} {dt:%B %Y}"
 
 def generate_certificate_pdf(
-    name, usn, college, start_date_str, end_date_str, topic, cert_id,
-    org, logo_path=None, signature_path=None, seal_path=None, cert_type=None
+    prefix, name, usn, college, start_date_str, end_date_str, topic, cert_id,
+    org, logo_path=None, signature_path=None, seal_path=None, cert_type=None,
+    activity_type="Internship", duration="15 Weeks"
 ):
     pdf = FPDF(unit='mm', format='A4')
     pdf.set_auto_page_break(False)
@@ -191,14 +197,14 @@ def generate_certificate_pdf(
     if org == "DLithe":
         org_name = "DLithe Consultancy Services Pvt. Ltd."
         org_cin = "CIN: U72900KA2019PTC121035"
-        org_footer1 = "Registered office: #51, 1st Main, 6th Block, 3rd Phase, BSK 3rd Stage, Bangaluru -560085"
+        org_footer1 = "           Registered office: #51, 1st Main, 6th Block, 3rd Phase, BSK 3rd Stage, Bangaluru -560085"
         org_footer2 = "Development Centeres: Ujire | Moodabidre | Manipal | Mangaluru | Belagavi"
         org_footer3 = "M: 9008815252 | www.dlithe.com | info@dlithe.com"
         for_text = "For DLithe Consultancy Services Pvt. Ltd."
     else:
         org_name = "nxtAlign Innovation Pvt.Ltd."
         org_cin = "CIN: U73100KA2022PTC165879"
-        org_footer1 = "Registered office: H No.4061/B 01,Near Chidambar Ashram Health Camp Betageri,Gadag KA 582102"
+        org_footer1 = "           Registered office: H No.4061/B 01,Near Chidambar Ashram Health Camp Betageri,Gadag KA 582102"
         org_footer2 = "Development Centeres: Ujire | AIC NITTE"
         org_footer3 = "M: 8553300781 | www.nxtalign.com | nxtalign@gmail.com"
         for_text = "For nxtAlign Innovation Pvt.Ltd."
@@ -231,26 +237,30 @@ def generate_certificate_pdf(
     # Main Heading
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "TO WHOMSOEVER IT MAY CONCERN", align='C', ln=1)
-    pdf.ln(15)
+    pdf.ln(10)
 
-    # Certificate Body (conditional)
+    # Certificate Body (dynamic)
     pdf.set_font("Arial", "", 12)
     effective_width = page_width - left_margin - right_margin
     pdf.set_x(left_margin)
 
     if cert_type and cert_type.lower() == "provisional":
-        para1 = clean_text(
-            f"This is to certify Mr/Ms, {name} bearing USN No: {usn} from {college} "
-            f"is currently undergoing a 15-week internship starting from {start_date_str} "
+        para1 = (
+            f"This is to certify {prefix}. {name}, bearing USN No: {usn} from {college}, "
+            f"is currently undergoing a {duration} {activity_type.lower()} starting from {start_date_str} "
             f"to {end_date_str}, under the mentorship of {org}'s development team. "
-            f"{name} is working on {topic}."
+            f"{name} is working on {topic}.\n\n"
+            f"The domain & agile development process exposure was given along with usage of GitHub tool.\n\n"
+            f"During the {activity_type.lower()}, {name} demonstrated good coding skills with sound design thinking."
         )
     else:
-        para1 = clean_text(
-            f"This is to certify Mr/Ms, {name} bearing USN No: {usn} from {college} "
-            f"has successfully completed a 15-week internship starting from {start_date_str} "
+        para1 = (
+            f"This is to certify {prefix}. {name}, bearing USN No: {usn} from {college}, "
+            f"has successfully completed a {duration} {activity_type.lower()} starting from {start_date_str} "
             f"to {end_date_str}, under the mentorship of {org}'s development team. "
-            f"{name} has worked on {topic}."
+            f"{name} has worked on {topic}.\n\n"
+            f"The domain & agile development process exposure was given along with usage of GitHub tool.\n\n"
+            f"During the {activity_type.lower()}, {name} demonstrated good coding skills with sound design thinking."
         )
 
     pdf.multi_cell(effective_width, 6, para1, align='J')
@@ -278,7 +288,7 @@ def generate_certificate_pdf(
 
     # Signature (right)
     sign_height = 0.0
-    sign_y = y_sign_start + 5.0
+    sign_y = y_sign_start + 6.0
     sign_width = 40.0
     if signature_path and os.path.exists(signature_path):
         try:
@@ -318,13 +328,14 @@ def insert_certificate_data(user_id, row, org):
         session.execute(
             text(f"""
                 INSERT INTO {table} (
-                    user_id, name, usn, college, email, phone, registered, start_date, end_date, program, mode, payment_status, certificate_issued_date, intern_id, topic, cert_id, domain, status
+                    user_id, prefix, name, usn, college, email, phone, registered, start_date, end_date, program, mode, payment_status, certificate_issued_date, topic, domain, certificate_id, status
                 ) VALUES (
-                    :user_id, :name, :usn, :college, :email, :phone, :registered, :start_date, :end_date, :program, :mode, :payment_status, :certificate_issued_date, :intern_id, :topic, :cert_id, :domain, 'pending_review'
+                    :user_id, :prefix, :name, :usn, :college, :email, :phone, :registered, :start_date, :end_date, :program, :mode, :payment_status, :certificate_issued_date, :topic, :domain, :certificate_id, 'pending_review'
                 )
             """),
             {
                 "user_id": user_id,
+                "prefix": row["Prefix"],
                 "name": row["Name"],
                 "usn": row["USN"],
                 "college": row["College"],
@@ -337,13 +348,13 @@ def insert_certificate_data(user_id, row, org):
                 "mode": row["Mode"],
                 "payment_status": row["Payment Status"],
                 "certificate_issued_date": row["Certificate Issued Date"],
-                "intern_id": row["Intern ID"],
                 "topic": row["Topic"],
-                "cert_id": row["Certificate ID"],
-                "domain": row.get("Domain", "")
+                "domain": row.get("Domain", ""),
+                "certificate_id": row["Certificate ID"]
             }
         )
         session.commit()
+
 
 def org_dropdown(label="Organization"):
     return st.selectbox(label, list(ORG_ASSETS.keys()))
@@ -366,6 +377,7 @@ def generate_certificates_for_approved(user_id, org, sig_path, seal_path, logo_p
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zipf:
         for _, row in results.iterrows():
+            prefix = row["prefix"]
             name = row["name"]
             usn = row["usn"]
             college = row["college"]
@@ -374,7 +386,9 @@ def generate_certificates_for_approved(user_id, org, sig_path, seal_path, logo_p
             start_date_str = format_date(row["start_date"])
             end_date_str = format_date(row["end_date"])
 
+            
             pdf_bytes = generate_certificate_pdf(
+                prefix=prefix,
                 name=name,
                 usn=usn,
                 college=college,
@@ -401,8 +415,10 @@ def generate_certificates_for_approved(user_id, org, sig_path, seal_path, logo_p
 
 def main():
     st.title("Certificate Generator")
+
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
+
     if not st.session_state['logged_in']:
         menu = st.sidebar.selectbox("Menu", ["Login", "Register"])
         if menu == "Register":
@@ -412,6 +428,7 @@ def main():
             password = st.text_input("Password", type="password", key="reg_pass")
             if st.button("Register"):
                 register_user(username, email, password)
+
         elif menu == "Login":
             st.subheader("Login to Your Account")
             username = st.text_input("Username", key="login_user")
@@ -427,7 +444,7 @@ def main():
         return
 
     st.sidebar.success(f"Logged in as {st.session_state['username']}")
-    menu = st.sidebar.radio("Actions", ["Upload & Generate Certificates", "Logout"])
+    menu = st.sidebar.radio("Actions", ["Upload & Generate Certificates", "Download Approved Certificates", "Logout"])
 
     if menu == "Logout":
         st.session_state['logged_in'] = False
@@ -440,9 +457,28 @@ def main():
         st.header("Batch Upload & Certificate Generation")
 
         cert_type = st.radio("Certificate Type", ["Provisional", "Final"])
-        org = org_dropdown()
-        domain = domain_dropdown()
+        org = org_dropdown()  # keep as it is
+        domain = domain_dropdown()  # keep as it is
+
+        # 3. Activity Type (dropdown)
+        activity_options = [
+            "Internship", "Bootcamp", "Certification Course", "Workshop",
+            "Hackathon", "Ideathon", "Faculty Development Program",
+            "Skill Development Program", "Employability Enhancement Program", "Other"
+        ]
+        activity_type = st.selectbox("Type of Activity", activity_options)
+        if activity_type == "Other":
+            activity_type = st.text_input("Enter custom activity type")
+
+        # 4. Duration (dropdown)
+        duration_options = ["15 Weeks", "1 Month", "2 Months", "3 Months", "4 Months", "Other"]
+        duration = st.selectbox("Duration", duration_options)
+        if duration == "Other":
+            duration = st.text_input("Enter custom duration")
+
+        # 5. File upload
         uploaded_file = st.file_uploader("Upload Student Data (CSV)", type="csv")
+
 
         if uploaded_file:
             df = pd.read_csv(uploaded_file)
@@ -464,9 +500,11 @@ def main():
                             cert_id = generate_certificate_id(
                                 DOMAIN_SHORTFORMS[domain],
                                 row["USN"],
-                                pd.to_datetime(row["End Date"])
+                                pd.to_datetime(row["End Date"]),
+                                org
                             )
                             pdf_bytes = generate_certificate_pdf(
+                                prefix=row["Prefix"],
                                 name=row["Name"],
                                 usn=row["USN"],
                                 college=row["College"],
@@ -478,7 +516,9 @@ def main():
                                 logo_path=logo_path,
                                 signature_path=sig_path,
                                 seal_path=seal_path,
-                                cert_type=cert_type
+                                cert_type=cert_type,
+                                activity_type=activity_type,
+                                duration=duration
                             )
                             pdf_filename = f"{row['Name'].replace(' ', '_')}_{cert_id}.pdf"
                             zipf.writestr(pdf_filename, pdf_bytes)
@@ -488,12 +528,18 @@ def main():
                             st.error(f"Error generating certificate for {row['Name']}: {str(e)}")
 
                 zip_buffer.seek(0)
-                # Program name for ZIP file name
-                program_name = cleaned_df["Program"].iloc[0] if "Program" in cleaned_df.columns and not cleaned_df["Program"].isnull().all() else "Certificates"
+
+                if "Program" in cleaned_df.columns and not cleaned_df["Program"].isnull().all():
+                    program_name = str(cleaned_df["Program"].iloc[0])
+                else:
+                    program_name = "Certificates"
+
                 now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-                zip_filename = f"{program_name}_{now_str}.zip".replace(" ", "_")
+                zip_filename = f"{org}_{program_name}_{now_str}.zip".replace(" ", "_")
+
                 st.session_state['zip_buffer'] = zip_buffer.getvalue()
                 st.session_state['zip_filename'] = zip_filename
+                st.success("Certificates generated successfully!")
 
             if 'zip_buffer' in st.session_state and st.session_state['zip_buffer']:
                 st.download_button(
@@ -513,3 +559,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
